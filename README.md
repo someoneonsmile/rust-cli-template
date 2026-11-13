@@ -14,8 +14,13 @@ just uninstall        # 卸载
 Arch Linux（AUR，发布第一个版本后可用）：
 
 ```bash
-yay -S {% if aur_package != "" %}{{ aur_package }}{% else %}{{ crate_name }}-bin{% endif %}          # 稳定版
-yay -S {% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{{ crate_name }}-nightly-bin{% endif %}   # 每夜构建
+# yay
+yay -S {% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}          # 稳定版
+yay -S {% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{{ project-name }}-nightly-bin{% endif %}   # 每夜构建
+
+# paru
+paru -S {% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}
+paru -S {% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{{ project-name }}-nightly-bin{% endif %}
 ```
 
 ## 使用
