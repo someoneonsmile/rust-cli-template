@@ -1,0 +1,20 @@
+[package]
+name = "{{ project-name }}"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+description = "{{ description }}"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+
+[build-dependencies]
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+clap_mangen = "0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

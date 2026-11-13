@@ -1,0 +1,37 @@
+# cargo-generate 模板配置
+# 用法：cargo generate --path ~/code/rust-cli-template --name <项目名>
+#
+# 模板变量（在文件中用 {{ project-name }} / {{ crate_name }} 引用）：
+#   project-name  kebab-case 项目名，如 my-tool
+#   crate_name    snake_case crate 名，如 my_tool
+#   username      从 git config user.name 读取
+#   authors       从 git config user.name / user.email 读取
+
+[template]
+# 不复制到生成项目里的文件
+ignore = ["TEMPLATE-NOTES.md"]
+
+[placeholders.description]
+type = "string"
+prompt = "一句话描述这个 CLI 做什么？（不要包含双引号）"
+default = "A small Rust CLI tool"
+
+[placeholders.github_username]
+type = "string"
+prompt = "GitHub 用户名？（回车则用 git config 里的 user.name）"
+default = ""
+
+[placeholders.include_windows]
+type = "bool"
+prompt = "是否发布 Windows 构建？"
+default = true
+
+[placeholders.aur_package]
+type = "string"
+prompt = "AUR 稳定包名？（回车则用 <crate>-bin）"
+default = ""
+
+[placeholders.aur_nightly_package]
+type = "string"
+prompt = "AUR nightly 包名？（回车则用 <crate>-nightly-bin）"
+default = ""

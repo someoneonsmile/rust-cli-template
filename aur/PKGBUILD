@@ -1,0 +1,31 @@
+# Maintainer: {{ authors }}
+pkgname={% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}
+provides=('{{ project-name }}')
+conflicts=('{{ project-name }}')
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="{{ description }}"
+arch=('x86_64' 'aarch64')
+url="https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}"
+license=('MIT')
+options=('!strip' '!debug')
+
+_source_base="${url}/releases/download/v${pkgver}"
+
+# 下载到 SRCDEST 的本地文件名带上 pkgver：
+# 上游资产名不含版本号，若沿用原名，makepkg 会静默复用上一次缓存的 tar.gz，
+# 导致「包版本是新的、内容却是旧的」。文件名随 pkgver 变化可强制重新下载。
+source_x86_64=("{{ project-name }}-${pkgver}-x86_64-linux-gnu.tar.gz::${_source_base}/{{ project-name }}-x86_64-linux-gnu.tar.gz")
+source_aarch64=("{{ project-name }}-${pkgver}-aarch64-linux-gnu.tar.gz::${_source_base}/{{ project-name }}-aarch64-linux-gnu.tar.gz")
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+    cd "$srcdir"
+    tar xzf "{{ project-name }}-${pkgver}-${CARCH}-linux-gnu.tar.gz"
+    install -Dm755 "{{ project-name }}-${CARCH}-linux-gnu/{{ project-name }}" "$pkgdir/usr/bin/{{ project-name }}"
+    install -Dm644 "{{ project-name }}-${CARCH}-linux-gnu/complete/{{ project-name }}.bash" "$pkgdir/usr/share/bash-completion/completions/{{ project-name }}"
+    install -Dm644 "{{ project-name }}-${CARCH}-linux-gnu/complete/_{{ project-name }}" "$pkgdir/usr/share/zsh/site-functions/_{{ project-name }}"
+    install -Dm644 "{{ project-name }}-${CARCH}-linux-gnu/complete/{{ project-name }}.fish" "$pkgdir/usr/share/fish/vendor_completions.d/{{ project-name }}.fish"
+    install -Dm644 "{{ project-name }}-${CARCH}-linux-gnu/man/{{ project-name }}.1" "$pkgdir/usr/share/man/man1/{{ project-name }}.1"
+}

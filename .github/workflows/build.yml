@@ -1,0 +1,105 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      version_suffix:
+        required: false
+        type: string
+        default: ''
+        description: 'Appended to Cargo.toml version (e.g. "-nightly-20261113-10-gabc12345")'
+
+jobs:
+  build:
+    env:
+      SHELL_HELP_DIR: shell_help
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: {{ project-name }}-x86_64-linux-gnu
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            asset: {{ project-name }}-x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            asset: {{ project-name }}-aarch64-linux-gnu
+          # macOS：macos-26-intel 是 Intel(x86_64) 标准 runner，macos-26 是 Apple Silicon(arm64) 标准 runner
+          - os: macos-26-intel
+            target: x86_64-apple-darwin
+            asset: {{ project-name }}-x86_64-darwin
+          - os: macos-26
+            target: aarch64-apple-darwin
+            asset: {{ project-name }}-aarch64-darwin
+          {% if include_windows %}
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: {{ project-name }}-x86_64-windows
+          {% endif %}
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: {% raw %}${{ matrix.target }}{% endraw %}
+
+      - name: Install cross (musl build)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: {% raw %}${{ matrix.target }}{% endraw %}
+
+      - name: Override version for nightly
+        if: inputs.version_suffix != ''
+        shell: bash
+        run: |
+          CURRENT=$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
+          NEW="${CURRENT}{% raw %}${{ inputs.version_suffix }}{% endraw %}"
+          sed -i.bak "1,/^version = /s/^version = \".*\"/version = \"${NEW}\"/" Cargo.toml
+          rm -f Cargo.toml.bak
+          echo "Build version: ${NEW}"
+
+      - name: Build (native)
+        if: matrix.target != 'x86_64-unknown-linux-musl'
+        run: cargo build --release --target {% raw %}${{ matrix.target }}{% endraw %}
+
+      - name: Build (musl via cross)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: cross build --release --target {% raw %}${{ matrix.target }}{% endraw %}
+
+      - name: Package artifact
+        shell: bash
+        run: |
+          staging="{% raw %}${{ matrix.asset }}{% endraw %}"
+          mkdir -p "$staging" artifacts
+
+          # 复制二进制文件
+          if [ "{% raw %}${{ runner.os }}{% endraw %}" = "Windows" ]; then
+            cp "target/{% raw %}${{ matrix.target }}{% endraw %}/release/{{ project-name }}.exe" "$staging/"
+          else
+            cp "target/{% raw %}${{ matrix.target }}{% endraw %}/release/{{ project-name }}" "$staging/"
+          fi
+
+          # 复制 build.rs 生成的 shell 补全（bash/zsh/fish/elvish）与 man 手册页
+          cp -r "${SHELL_HELP_DIR}/complete" "$staging/"
+          cp -r "${SHELL_HELP_DIR}/man" "$staging/"
+
+          # 复制 README 和 LICENSE
+          cp README.md LICENSE "$staging/"
+
+          # 打包为 tar.gz
+          tar czf "artifacts/$staging.tar.gz" "$staging"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: {% raw %}${{ matrix.asset }}{% endraw %}
+          path: artifacts/{% raw %}${{ matrix.asset }}{% endraw %}.tar.gz

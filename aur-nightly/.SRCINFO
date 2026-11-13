@@ -1,0 +1,19 @@
+pkgbase = {% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{{ project-name }}-nightly-bin{% endif %}
+	pkgdesc = {{ description }} — nightly build
+	pkgver = 0.1.0+nightly+19700101+0+g00000000
+	pkgrel = 1
+	url = https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	provides = {{ project-name }}
+	conflicts = {{ project-name }}
+	conflicts = {{ project-name }}-bin
+	options = !strip
+	options = !debug
+	source_x86_64 = {{ project-name }}-0.1.0+nightly+19700101+0+g00000000-x86_64-linux-gnu.tar.gz::https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}/releases/download/nightly/{{ project-name }}-x86_64-linux-gnu.tar.gz
+	sha256sums_x86_64 = SKIP
+	source_aarch64 = {{ project-name }}-0.1.0+nightly+19700101+0+g00000000-aarch64-linux-gnu.tar.gz::https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}/releases/download/nightly/{{ project-name }}-aarch64-linux-gnu.tar.gz
+	sha256sums_aarch64 = SKIP
+
+pkgname = {% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{{ project-name }}-nightly-bin{% endif %}

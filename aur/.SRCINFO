@@ -1,0 +1,18 @@
+pkgbase = {% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}
+	pkgdesc = {{ description }}
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	provides = {{ project-name }}
+	conflicts = {{ project-name }}
+	options = !strip
+	options = !debug
+	source_x86_64 = {{ project-name }}-0.1.0-x86_64-linux-gnu.tar.gz::https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}/releases/download/v0.1.0/{{ project-name }}-x86_64-linux-gnu.tar.gz
+	sha256sums_x86_64 = SKIP
+	source_aarch64 = {{ project-name }}-0.1.0-aarch64-linux-gnu.tar.gz::https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}/releases/download/v0.1.0/{{ project-name }}-aarch64-linux-gnu.tar.gz
+	sha256sums_aarch64 = SKIP
+
+pkgname = {% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}

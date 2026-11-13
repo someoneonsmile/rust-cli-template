@@ -1,0 +1,179 @@
+# {{ project-name }} — {{ description }}
+BINARY := "{{ project-name }}"
+AUR_PKG := "{% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}"
+AUR_NIGHTLY_PKG := "{% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{{ project-name }}-nightly-bin{% endif %}"
+
+{% raw %}
+# https://github.com/cargo/just
+SHELL_HELP_DIR := "shell_help"
+DESTDIR := ""
+PREFIX := "/usr/local"
+BINDIR := PREFIX / "bin"
+DATADIR := PREFIX / "share"
+MANDIR := DATADIR / "man"
+
+# 默认列出所有可用命令
+_default:
+    @just --list
+
+# ─── 开发 ──────────────────────────────────────────────
+
+# 快速检查（类型检查，不生成二进制）
+check:
+    cargo check
+
+# 编译 debug 版本
+build:
+    SHELL_HELP_DIR={{ SHELL_HELP_DIR }} cargo build
+
+# 编译 release 版本（LTO + strip）
+release:
+    SHELL_HELP_DIR={{ SHELL_HELP_DIR }} cargo build --release
+
+# 运行（debug）
+run *args:
+    cargo run -- {{ args }}
+
+# 运行（release）
+run-release *args:
+    cargo run --release -- {{ args }}
+
+# 运行测试
+test:
+    cargo test
+
+# 格式化代码
+fmt:
+    cargo fmt
+
+# 检查格式（不修改）
+fmt-check:
+    cargo fmt --check
+
+# Clippy lint
+lint:
+    cargo clippy --all-targets
+
+# Clippy lint（严格模式，warning 视为 error）
+lint-strict:
+    cargo clippy --all-targets -- -D warnings
+
+# Clippy 自动修复
+fix:
+    cargo clippy --fix --allow-dirty --allow-staged
+
+# 清理构建产物（含生成的 shell 补全）
+clean:
+    cargo clean
+    rm -rf {{ SHELL_HELP_DIR }}
+
+# 监听文件变更，自动 check
+watch:
+    cargo watch -x check
+
+# 全量检查（fmt → clippy → test → release build）
+ci: fmt-check lint-strict test release
+
+# ─── 安装 ──────────────────────────────────────────────
+
+# 安装到系统（/usr/local/bin/ + shell 补全 + man）
+install:
+    SHELL_HELP_DIR={{ SHELL_HELP_DIR }} cargo build --release
+    sudo install -Dm755 target/release/{{ BINARY }} "{{ DESTDIR }}{{ BINDIR }}/{{ BINARY }}"
+    sudo install -Dm644 {{ SHELL_HELP_DIR }}/complete/{{ BINARY }}.bash "{{ DESTDIR }}{{ DATADIR }}/bash-completion/completions/{{ BINARY }}"
+    sudo install -Dm644 {{ SHELL_HELP_DIR }}/complete/_{{ BINARY }} "{{ DESTDIR }}{{ DATADIR }}/zsh/site-functions/_{{ BINARY }}"
+    sudo install -Dm644 {{ SHELL_HELP_DIR }}/complete/{{ BINARY }}.fish "{{ DESTDIR }}{{ DATADIR }}/fish/vendor_completions.d/{{ BINARY }}.fish"
+    sudo install -Dm644 {{ SHELL_HELP_DIR }}/man/{{ BINARY }}.1 "{{ DESTDIR }}{{ MANDIR }}/man1/{{ BINARY }}.1"
+
+# 卸载安装的二进制、shell 补全和 man 手册页
+uninstall:
+    sudo rm -f "{{ DESTDIR }}{{ BINDIR }}/{{ BINARY }}"
+    sudo rm -f "{{ DESTDIR }}{{ DATADIR }}/bash-completion/completions/{{ BINARY }}"
+    sudo rm -f "{{ DESTDIR }}{{ DATADIR }}/zsh/site-functions/_{{ BINARY }}"
+    sudo rm -f "{{ DESTDIR }}{{ DATADIR }}/fish/vendor_completions.d/{{ BINARY }}.fish"
+    sudo rm -f "{{ DESTDIR }}{{ MANDIR }}/man1/{{ BINARY }}.1"
+
+# ─── AUR ──────────────────────────────────────────────
+
+# 重新生成 aur/.SRCINFO（手动修改 PKGBUILD 后执行）
+aur-srcinfo:
+    (cd aur && makepkg --printsrcinfo > .SRCINFO)
+
+# 提交 aur/ 变更并推送到 AUR
+# AUR 禁止 force push，所以用 clone → 复制文件 → commit → push 的可靠方式
+aur-push:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git add aur/
+    git commit -m "chore: update AUR package" || true
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    git clone "ssh://aur@aur.archlinux.org/{{ AUR_PKG }}.git" "$TMP"
+    cp aur/PKGBUILD aur/.SRCINFO "$TMP/"
+    git -C "$TMP" add -A
+    git -C "$TMP" commit -m "chore: update AUR package" || true
+    git -C "$TMP" push origin master
+
+# 发布新版本到 AUR（用法：just aur-release VERSION=0.2.0）
+aur-release VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sed -i 's/^pkgver=.*/pkgver={{ VERSION }}/' aur/PKGBUILD
+    sed -i 's/^pkgrel=.*/pkgrel=1/' aur/PKGBUILD
+    (cd aur && makepkg --printsrcinfo > .SRCINFO)
+    git add aur/
+    git commit -m "chore: update AUR to v{{ VERSION }}" || true
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    git clone "ssh://aur@aur.archlinux.org/{{ AUR_PKG }}.git" "$TMP"
+    cp aur/PKGBUILD aur/.SRCINFO "$TMP/"
+    git -C "$TMP" add -A
+    git -C "$TMP" commit -m "chore: update to v{{ VERSION }}" || true
+    git -C "$TMP" push origin master
+
+# 重新生成 aur-nightly/.SRCINFO
+aur-nightly-srcinfo:
+    (cd aur-nightly && makepkg --printsrcinfo > .SRCINFO)
+
+# 提交 aur-nightly/ 变更并推送到 Nightly AUR
+aur-nightly-push:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git add aur-nightly/
+    git commit -m "chore: update nightly AUR package" || true
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    git clone "ssh://aur@aur.archlinux.org/{{ AUR_NIGHTLY_PKG }}.git" "$TMP"
+    cp aur-nightly/PKGBUILD aur-nightly/.SRCINFO "$TMP/"
+    git -C "$TMP" add -A
+    git -C "$TMP" commit -m "chore: update nightly AUR package" || true
+    git -C "$TMP" push origin master
+
+# 发布 Nightly AUR
+# 版本号公式与 nightly workflow 一致：CARGO_VER+nightly+DATE+COMMIT_COUNT+gSHORT_SHA
+aur-nightly-release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DATE=$(date +%Y%m%d)
+    SHORT_SHA=$(git rev-parse --short=8 HEAD)
+    LAST_STABLE_TAG=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null) || true
+    if [ -n "$LAST_STABLE_TAG" ]; then
+      COMMIT_COUNT=$(git rev-list --count "${LAST_STABLE_TAG}..HEAD")
+    else
+      COMMIT_COUNT=$(git rev-list --count HEAD)
+    fi
+    CARGO_VER=$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
+    PKGVER="${CARGO_VER}+nightly+${DATE}+${COMMIT_COUNT}+g${SHORT_SHA}"
+    sed -i "s/^pkgver=.*/pkgver=${PKGVER}/" aur-nightly/PKGBUILD
+    sed -i 's/^pkgrel=.*/pkgrel=1/' aur-nightly/PKGBUILD
+    (cd aur-nightly && makepkg --printsrcinfo > .SRCINFO)
+    git add aur-nightly/
+    git commit -m "chore: update nightly AUR to ${PKGVER}" || true
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    git clone "ssh://aur@aur.archlinux.org/{{ AUR_NIGHTLY_PKG }}.git" "$TMP"
+    cp aur-nightly/PKGBUILD aur-nightly/.SRCINFO "$TMP/"
+    git -C "$TMP" add -A
+    git -C "$TMP" commit -m "chore: update to ${PKGVER}" || true
+    git -C "$TMP" push origin master
+{% endraw %}
