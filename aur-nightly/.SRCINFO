@@ -8,7 +8,7 @@ pkgbase = {% if aur_nightly_package != "" %}{{ aur_nightly_package }}{% else %}{
 	license = MIT
 	provides = {{ project-name }}
 	conflicts = {{ project-name }}
-	conflicts = {{ project-name }}-bin
+	conflicts = {% if aur_package != "" %}{{ aur_package }}{% else %}{{ project-name }}-bin{% endif %}
 	options = !strip
 	options = !debug
 	source_x86_64 = {{ project-name }}-0.1.0+nightly+19700101+0+g00000000-x86_64-linux-gnu.tar.gz::https://github.com/{% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}/releases/download/nightly/{{ project-name }}-x86_64-linux-gnu.tar.gz
