@@ -61,6 +61,22 @@ src/
 
 ## 发布流程
 
+### 首次发布前（每个新仓库做一次，AI 可直接执行）
+
+```bash
+# 1. 创建 GitHub 仓库并推送（还没创建时）
+gh repo create {% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }} --private --source=. --push
+
+# 2. 配置 AUR 私钥到仓库 secrets（私钥经 stdin 传入，不会打印内容）
+just setup-secret {% if github_username != "" %}{{ github_username }}{% else %}{{ username }}{% endif %}/{{ project-name }}
+```
+
+前提：`gh auth status` 已登录；AUR 私钥在 `~/.ssh/aur`（不同则改 justfile 里的 `AUR_KEY`）。
+
+**AUR 包不需要预先创建**：首次 push 时 AUR 自动建包（clone 一个不存在的包名会得到一个空仓库）。
+
+### 发版
+
 ```bash
 # 1. 改 Cargo.toml 的 version
 # 2. 提交
@@ -68,8 +84,6 @@ git add -A && git commit -m "chore: release v0.1.0"
 # 3. 打 tag 推上去，触发 release.yml
 git tag v0.1.0 && git push origin v0.1.0
 ```
-
-AUR 更新是自动的，前提是仓库 secret `AUR_SSH_PRIVATE_KEY` 已配置。
 
 ## 已知陷阱
 

@@ -57,7 +57,8 @@ git push origin v0.1.0
 
 `nightly` 分支的每日构建由 `nightly.yml` 负责，产物是滚动 prerelease + AUR nightly 包。
 
-**前置条件**：仓库 Settings → Secrets 里配置 `AUR_SSH_PRIVATE_KEY`（对应已上传到 AUR 账户的 SSH 私钥）。
+**前置条件**：仓库需要 `AUR_SSH_PRIVATE_KEY` secret。用 `just setup-secret <owner>/<repo>` 一键写入
+（内部是 `gh secret set ... < ~/.ssh/aur`，私钥不会打印）。AUR 包无需预先创建，首次推送自动建包。
 
 ## License
 

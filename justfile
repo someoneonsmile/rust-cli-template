@@ -6,6 +6,8 @@ AUR_NIGHTLY_PKG := "{% if aur_nightly_package != "" %}{{ aur_nightly_package }}{
 {% raw %}
 # https://github.com/cargo/just
 SHELL_HELP_DIR := "shell_help"
+# AUR 账户的 SSH 私钥路径（setup-secret 用；按本机实际路径改）
+AUR_KEY := "~/.ssh/aur"
 DESTDIR := ""
 PREFIX := "/usr/local"
 BINDIR := PREFIX / "bin"
@@ -92,6 +94,13 @@ uninstall:
     sudo rm -f "{{ DESTDIR }}{{ DATADIR }}/zsh/site-functions/_{{ BINARY }}"
     sudo rm -f "{{ DESTDIR }}{{ DATADIR }}/fish/vendor_completions.d/{{ BINARY }}.fish"
     sudo rm -f "{{ DESTDIR }}{{ MANDIR }}/man1/{{ BINARY }}.1"
+
+# ─── 发布准备 ──────────────────────────────────────────
+
+# 把 AUR SSH 私钥写入 GitHub 仓库 secret（需要 gh 已登录；私钥经 stdin 传入，不会打印）
+# 用法：just setup-secret owner/repo
+setup-secret REPO:
+    gh secret set AUR_SSH_PRIVATE_KEY -R {{ REPO }} < {{ AUR_KEY }}
 
 # ─── AUR ──────────────────────────────────────────────
 

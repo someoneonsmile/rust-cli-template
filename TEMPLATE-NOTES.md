@@ -43,10 +43,18 @@ cargo generate rust-cli --name my-tool \
 2. 把 `AGENTS.md` 给 AI 看，然后只让它改 `src/`
 3. 改 `Cargo.toml` 的 `version`，打 tag `v0.1.0` 推送，CI 自动发布
 
-**首次发布前需要做的两件事**：
+**首次发布前需要做的一件事**：配置 `AUR_SSH_PRIVATE_KEY` secret。可以让 AI 直接跑：
 
-- GitHub 仓库 Settings → Secrets 加 `AUR_SSH_PRIVATE_KEY`（AUR 账户私钥）
-- 在 AUR 上先创建 `<项目名>-bin` 和 `<项目名>-nightly-bin` 两个空仓库（否则首次推送会失败）
+```bash
+gh repo create <GitHub用户>/my-tool --private --source=. --push   # 仓库还没建时
+just setup-secret <GitHub用户>/my-tool                             # 写入 AUR 私钥 secret
+```
+
+`just setup-secret` 内部是 `gh secret set AUR_SSH_PRIVATE_KEY -R <repo> < ~/.ssh/aur`，
+私钥经 stdin 传入、不会被打印。前提是 `gh auth status` 已登录、AUR 私钥在 `~/.ssh/aur`。
+
+**AUR 包不需要预先创建**：首次 push 时 AUR 会自动建包（clone 不存在的包名会得到空仓库），
+所以 `-bin` 和 `-nightly-bin` 两个包都是第一次发布时自动出现的。
 
 ## 模板怎么维护
 
